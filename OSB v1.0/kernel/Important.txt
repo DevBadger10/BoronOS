@@ -1,0 +1,1 @@
+There are no bin, lib or src files yet for kernel, as they either are empty or too big to upload. Add these then run make.
