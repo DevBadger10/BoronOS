@@ -1,22 +1,114 @@
 #include <efi.h>
 #include <efilib.h>
+#include <elf.h>
+#include <stddef.h>
+
+// typedef unsigned long long size_t   // Also changed to get WSL of my back instead addded stddef.h
+
+EFI_FILE* LoadFile(EFI_FILE* Directory, CHAR16* Path, EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE* SystemTable){
+	EFI_FILE* LoadedFile;
+
+	EFI_LOADED_IMAGE_PROTOCOL* LoadedImage;
+	SystemTable->BootServices->HandleProtocol(ImageHandle, &gEfiLoadedImageProtocolGuid, (void**)&LoadedImage);
+
+	EFI_SIMPLE_FILE_SYSTEM_PROTOCOL* FileSystem;
+	SystemTable->BootServices->HandleProtocol(LoadedImage->DeviceHandle, &gEfiSimpleFileSystemProtocolGuid, (void**)&FileSystem);
+
+	if (Directory == NULL){
+		FileSystem->OpenVolume(FileSystem, &Directory);
+	}
+
+	EFI_STATUS s = Directory->Open(Directory, &LoadedFile, Path, EFI_FILE_MODE_READ, EFI_FILE_READ_ONLY);
+	if (s != EFI_SUCCESS){
+		return NULL;
+	}
+	return LoadedFile;
+
+}
+
+int memcmp(const void* aptr, const void* bptr, size_t n){
+	const unsigned char* a = aptr, *b = bptr;
+	for (size_t i = 0l; i < n; i++){
+		if (a[i] < b[i]) return -1;
+		else if (a[i] > b[i]) return 1;
+	}
+	return 0;
+}
 
 EFI_STATUS efi_main (EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
-	EFI_STATUS Status;
-	EFI_INPUT_KEY Key;
 
-	ST = SystemTable; //Store the system table
+	InitializeLib(ImageHandle, SystemTable);
+	Print(L"TeString \n\r"); //Custom String
 
-	Status = ST->ConOut->OutputString(ST->ConOut, L"HelloWorld!\n\r"); // Print HelloWorld to the console
+	EFI_FILE* Kernel = LoadFile(NULL, L"kernel.elf", ImageHandle, SystemTable);
+	if (Kernel == NULL){ // If the elf is santa it will cry.
+		Print(L"Could not load kernel :`( \n\r");
+	}
+	else{
+		Print(L"Kernel Loaded Succesfully \n\r");
+	}
 
-	if (EFI_ERROR(Status)) //If printing failed, return
-		return Status;
+	Elf64_Ehdr header;
+	{
+		UINTN FileInfoSize;
+		EFI_FILE_INFO* FileInfo;
+		Kernel->GetInfo(Kernel, &gEfiDiskIoProtocolGuid, &FileInfoSize, NULL); //Changed the first & from source to get WSL off my back and let it compile.
+		SystemTable->BootServices->AllocatePool(EfiLoaderData, FileInfoSize, (void**)&FileInfo);
+		Kernel->GetInfo(Kernel, &gEfiFileInfoGuid, &FileInfoSize, (void**)&FileInfo);
 
-	Status = ST->ConIn->Reset(ST->ConIn, FALSE); // Empty the Console Input Buffer
-	if (EFI_ERROR(Status))
-		return Status;
+		UINTN size = sizeof(header);
+		Kernel->Read(Kernel, &size, &header);
+	}
 
-	while ((Status = ST->ConIn->ReadKeyStroke(ST->ConIn, &Key)) == EFI_NOT_READY) ; // Poll For Key Input
+	if (
+		memcmp(&header.e_ident[EI_MAG0], ELFMAG, SELFMAG) != 0 ||
+		header.e_ident[EI_CLASS] != ELFCLASS64 ||
+		header.e_ident[EI_DATA] != ELFDATA2LSB ||
+		header.e_type != ET_EXEC ||
+		header.e_machine != EM_X86_64 ||
+		header.e_version != EV_CURRENT
+	) //Checkland, making sure the kernel is ok, not popped! O (unpopped) X (popped)
+	{
+		Print(L"Kernel format is bad \n\r"); // Oh no! It is popped!
+	}
+	else
+	{
+		Print(L"Kernel header successfully verified \n\r"); // Yay, it is not popped.
+	}
 
-	return Status; // Exit the UEFI application
+	Elf64_Phdr* phdrs;
+	{
+		Kernel->SetPosition(Kernel, header.e_phoff);
+		UINTN size = header.e_phnum * header.e_phentsize;
+		SystemTable->BootServices->AllocatePool(EfiLoaderData, size, (void**)&phdrs);
+		Kernel->Read(Kernel, &size, phdrs);
+	}
+
+	for (
+		Elf64_Phdr* phdr = phdrs;
+		(char*)phdr < (char*)phdrs + header.e_phnum * header.e_phentsize;
+		phdr = (Elf64_Phdr*)((char*)phdr + header.e_phentsize)
+	)
+	{
+		switch (phdr->p_type){
+			case PT_LOAD:
+			{
+				int pages = (phdr->p_memsz + 0x1000 - 1) / 0x1000;
+				Elf64_Addr segment = phdr->p_paddr;
+				SystemTable->BootServices->AllocatePages(AllocateAddress, EfiLoaderData, pages, &segment);
+
+				Kernel->SetPosition(Kernel, phdr->p_offset);
+				UINTN size = phdr->p_filesz;
+				Kernel->Read(Kernel, &size, (void*)segment);
+				break;
+			}
+		}
+	}
+	Print(L"Kernel Fully Loaded \n\r");
+
+	int (*KernelStart)() = ((__attribute__((sysv_abi)) int (*)() ) header.e_entry);	
+	Print(L"%d\n\r", KernelStart());
+
+
+	return EFI_SUCCESS; // Exit the UEFI application
 }
