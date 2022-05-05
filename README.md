@@ -1,4 +1,7 @@
 # BoronOS
+
+If you require use of a quickstart guide go to https://github.com/DevBadger10/BoronOS/wiki/Quickstart.
+
 My OS based on Poncho's OS Dev series.
 This is based on Poncho's OS Dev series. If you want to make one yourself, see https://www.youtube.com/watch?v=mpPbKEeWIHU&list=PLxN4E629pPnJxCQCLy7E0SQY_zuumOVyZ. All credit for the fundamentals goes to Poncho.
 
