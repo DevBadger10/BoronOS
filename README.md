@@ -1,10 +1,7 @@
 # BoronOS
 
-If you require use of a quickstart guide go to https://github.com/DevBadger10/BoronOS/wiki/Quickstart.
+This is the old version, when I was trying to make it from scratch. I am now using CosmOS. See the new repository at [this link](https://www.github.com/ProjectBoron/BoronOS).
 
-My OS based on Poncho's OS Dev series.
-This is based on Poncho's OS Dev series. If you want to make one yourself, see https://www.youtube.com/watch?v=mpPbKEeWIHU&list=PLxN4E629pPnJxCQCLy7E0SQY_zuumOVyZ. All credit for the fundamentals goes to Poncho.
+If you want to veiw former versions, check the commit history.
 
-You may not distribute this volume any way, shape or form. You can use it for inspiration or reference when making your own OS or curious about the inner workings, but credit must be given.
-
-Made by DevBadger
+While it was fun making one from scratch and writing the bare code, it was also just too hard to continue.
