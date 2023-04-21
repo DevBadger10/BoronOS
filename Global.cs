@@ -1,13 +1,14 @@
-﻿using System;
+﻿using Cosmos.Core;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using Sys = Cosmos.System;
 
 namespace BoronOS
 {
     public static class Global
     {
         public static string BOSVersion = "0.0.1";
+        public static string BOSAppend = "]-";
     }
 }
